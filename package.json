@@ -1,0 +1,34 @@
+{
+  "name": "ses_email",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "deploy:dev": " SL_DEBUG=* serverless deploy --stage dev",
+    "deploy:test": "SL_DEBUG=* serverless deploy --stage test",
+    "deploy:homolog": "SL_DEBUG=* serverless deploy --stage homolog",
+    "deploy:master": "SL_DEBUG=* serverless deploy --stage prod",
+    "deploy": "npm run deploy:dev",
+    "eslint": "eslint .",
+    "testeSenha": "sls invoke local -f recuperaSenha --path testes/testeSenha.json",
+    "createTemplate": "sls invoke local -f createTemplate --path testes/templateTestes/createTemplate.json",
+    "deleteTemplate": "sls invoke local -f deleteTemplate --path testes/templateTestes/deleteTemplate.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rafael-Ovidio-Leal/SES_Email.git"
+  },
+  "author": "Rafael Ovidio Leal",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rafael-Ovidio-Leal/SES_Email/issues"
+  },
+  "homepage": "https://github.com/Rafael-Ovidio-Leal/SES_Email#readme",
+  "dependencies": {
+    "aws-sdk": "^2.1087.0",
+    "eslint": "^8.10.0",
+    "joi": "^17.6.0",
+    "serverless": "^3.7.1",
+    "serverless-domain-manager": "^6.0.2"
+  }
+}

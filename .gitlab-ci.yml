@@ -1,0 +1,151 @@
+variables:
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+
+image: node:12-slim
+
+# script para instalação de dependencia
+.install: &install
+  - npm i
+
+# script para validação de código
+.lint_js: &lint_js
+  - npm run eslint
+
+# definições das etapas a serem executadas
+stages:
+  - prepare
+  - code_quality
+  - deploy
+
+# Definições de cash
+cache:
+  paths:
+    - node_modules/
+
+# Instalar dependencias do projeto
+install:
+  stage: prepare
+  script: *install
+  only:
+    - dev
+    - test
+    - master
+
+# Verificação de formatação do código javascript
+lint:script:
+  stage: code_quality
+  script: *lint_js
+  only:
+    - dev
+    - test
+    - master
+
+# Faz o deploy do código
+deploy:
+  stage: deploy
+  script:
+    - deploy
+  only:
+    - dev
+    - test
+    - master
+
+.auto_devops: &auto_devops |
+
+  #Global Variables
+  NVM_INSTALED=false
+  declare -a PATHS_TO_DEPLOY
+
+  function print_message {
+
+    echo "==============================================================="
+    echo $1
+    echo "==============================================================="
+  }
+
+  function configure_environment {
+
+    print_message "Environment configuration - Start"
+
+    print_message "Update -- APT-GET"
+    apt-get -y update
+
+    print_message "Install -- GIT"
+    apt-get -y install git-core
+
+    print_message "Install -- Zip"
+    apt-get -y install zip
+
+    print_message "Environment configuration - Finished"
+  }
+
+  function aws_deploy {
+    npm i
+
+    print_message "Make Deploy -- SERVERLESS"
+    npm run deploy:$CI_COMMIT_REF_NAME
+  }
+
+  function get_paths_deploy {
+
+    print_message "Get Paths to deploy - Start"
+
+    PATHS_TO_DEPLOY=.
+    print_message "Get Paths to deploy - Finished"
+  }
+
+  function execute_deploy {
+
+    get_paths_deploy
+
+    print_message "Prepare Deploy"
+    PWD_ORIGIN=$( pwd ) #conseguindo o path original
+
+    print_message "CI_COMMIT_REF_NAME"
+    print_message $CI_COMMIT_REF_NAME
+
+    print_message "CI_COMMIT_REF_NAME"
+    print_message $CI_COMMIT_REF_NAME
+
+    for i in ${PATHS_TO_DEPLOY[@]}; do #para cada path realizar o deploy
+
+      cd ${PWD_ORIGIN}/${i}
+
+      print_message "Prepare to AWS deploy"
+      LANGUAGE=$( sed -n '/runtime/p' serverless.yml ) #conseguindo a linguagem utilizada
+      LANGUAGE=${LANGUAGE/runtime:/}
+      STEPFUNCTIONS=$( sed -n '/stateMachines/p' serverless.yml )
+      RESOURCES=$( sed -n '/Resources/p' serverless.yml )
+
+      if [[ ${LANGUAGE} == *"nodejs"* ]] || [[ ${STEPFUNCTIONS} == *"stateMachines"* ]] || [[ ${RESOURCES} == *"Resources"* ]]; then
+        aws_deploy
+        rm -rf node_modules
+        rm -rf /home/.doc
+      else
+        print_message "Favor verificar qual linguagem esta sendo utilizada"
+      fi
+    done
+  }
+
+  function deploy() {
+    print_message "Choice account to deploy"
+
+    if [[ $CI_COMMIT_REF_NAME == "master" ]] || [[ $CI_COMMIT_REF_NAME == "test" ]]; then
+      print_message "primeiro"
+      AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+    else
+      print_message "segundo"
+      AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_DEV
+      AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_DEV
+    fi
+
+    configure_environment
+    print_message "Deploy - Start"
+    execute_deploy
+    print_message "Deploy - Finished"
+  }
+
+before_script:
+  - *auto_devops

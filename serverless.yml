@@ -1,0 +1,74 @@
+
+service: ses-email
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  memorySize: 180
+  timeout: 30
+
+  deploymentBucket:
+    name: ${file(./serverless-env-${self:provider.stage}.yml):deploymentBucket} # Nome do bucket S3 utilizado para armazenar os arquivos de deploy
+  role: ${file(./serverless-env-${self:provider.stage}.yml):role} # Define qual usuário IAM utilizado para permissões
+  vpc: ${file(./serverless-env-${self:provider.stage}.yml):${self:provider.stage}.vpc} # Define uma rede virtual para execução, é opcional mas quando definida necessita das informações contidas no arquivo serverless-env
+
+functions:
+  recuperaSenha:
+    handler: ./src/controller/recuperaSenha.recuperaSenha
+    description: Send email using SES service for password recovery.
+    events:
+      - http:
+          path: recuperaSenha
+          method: post
+          integration: lambda
+          response:
+            headers:
+              Access-Control-Allow-Origin: "'*'"
+
+  createTemplate:
+    handler: ./src/controller/templateController/createTemplate.createTemplate
+    description: Create template using SES service.
+    events:
+      - http:
+          path: createTemplate
+          method: post
+          integration: lambda
+          response:
+            headers:
+              Access-Control-Allow-Origin: "'*'"
+
+  deleteTemplate:
+    handler: ./src/controller/templateController/deleteTemplate.deleteTemplate
+    description: delete template using SES service.
+    events:
+      - http:
+          path: deleteTemplate
+          method: post
+          integration: lambda
+          response:
+            headers:
+              Access-Control-Allow-Origin: "'*'"
+
+custom:
+  customDomain:
+    domainName: ${self:service}.${file(./serverless-env-${self:provider.stage}.yml):domain}
+    stage: ${opt:alias, self:provider.stage}
+    basePath: ${opt:alias, self:provider.stage}
+    certificateName: ${file(./serverless-env-${self:provider.stage}.yml):certificate}
+    createRoute53Record: true
+    endpointType: 'EDGE'
+
+resources:
+  Resources:
+    ApiGatewayRestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: ${self:service}
+
+plugins:
+  - serverless-domain-manager
